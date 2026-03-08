@@ -25,16 +25,22 @@ export class WalletAuthGuard implements CanActivate {
     if (isPublic) return true;
 
     const request = context.switchToHttp().getRequest();
+    console.log(`\n[AuthGuard] Interceptando requisição: ${request.method} ${request.url}`);
+    
     const token = this.extractTokenFromHeader(request);
 
     if (!token) {
+      console.warn('[AuthGuard] 🚫 Token inválido ou não encontrado no header Authorization');
       throw new UnauthorizedException('Token de autenticação não fornecido');
     }
 
     try {
+      console.log('[AuthGuard] 🔍 Verificando o token JWT:', token.substring(0, 20) + '...');
       const payload: JwtPayload = await this.jwtService.verifyAsync(token);
       request.user = payload;
-    } catch {
+      console.log(`[AuthGuard] ✅ Token verificado com sucesso para User: ${payload.address} na App ${request.url}`);
+    } catch (error: any) {
+      console.error('[AuthGuard] ❌ Falha na verificação do JWT:', error.message);
       throw new UnauthorizedException('Token inválido ou expirado');
     }
 
