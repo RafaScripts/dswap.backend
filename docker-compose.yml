@@ -1,0 +1,42 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    platform: linux/arm64
+    ports:
+      - '3000:3000'
+    environment:
+      - NODE_ENV=development
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./src:/app/src
+
+  postgres:
+    image: postgres:16-alpine
+    platform: linux/arm64
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_DB: dswap
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    platform: linux/arm64
+    ports:
+      - '6379:6379'
+    command: redis-server --appendonly yes --ignore-warnings ARM64-COW-BUG
+    volumes:
+      - redisdata:/data
+
+volumes:
+  pgdata:
+  redisdata:
