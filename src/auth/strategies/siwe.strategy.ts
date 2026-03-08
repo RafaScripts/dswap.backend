@@ -1,5 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { SiweMessage } from 'siwe';
+import { getAddress } from 'viem';
 
 @Injectable()
 export class SiweStrategy {
@@ -31,9 +32,10 @@ export class SiweStrategy {
    * Gera uma mensagem SIWE formatada para o usuário assinar.
    */
   createMessage(address: string, nonce: string, domain = 'dswap.app'): string {
+    const checksumAddress = getAddress(address);
     const message = new SiweMessage({
       domain,
-      address,
+      address: checksumAddress,
       statement: 'Sign in with Ethereum to DSwap',
       uri: `https://${domain}`,
       version: '1',
