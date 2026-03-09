@@ -112,30 +112,45 @@ export class SwapGateway implements OnGatewayConnection, OnGatewayDisconnect {
   // ─── Server → Client Events ─────────────────────────────────
 
   notifyMatchFound(userId: string, payload: MatchFoundPayload): void {
+    this.logger.log(`[WS] 📡 Emitindo 'match:found' para User: ${userId}`);
+    this.logger.debug(`[WS] Payload: ${JSON.stringify(payload, null, 2)}`);
     this.server.to(`user:${userId}`).emit('match:found', payload);
   }
 
   notifyMatchConfirmed(userId: string, payload: MatchConfirmedPayload): void {
+    this.logger.log(`[WS] 📡 Emitindo 'match:confirmed' para User: ${userId}`);
+    this.logger.debug(`[WS] Payload: ${JSON.stringify(payload, null, 2)}`);
     this.server.to(`user:${userId}`).emit('match:confirmed', payload);
   }
 
   notifyDepositReceived(userId: string, payload: DepositReceivedPayload): void {
+    this.logger.log(`[WS] 📡 Emitindo 'deposit:received' para User: ${userId}`);
+    this.logger.debug(`[WS] Payload: ${JSON.stringify(payload, null, 2)}`);
     this.server.to(`user:${userId}`).emit('deposit:received', payload);
   }
 
   notifySwapProcessing(matchId: string): void {
+    this.logger.log(`[WS] 📡 Emitindo 'swap:processing' para Match Room: ${matchId}`);
     this.server.to(`match:${matchId}`).emit('swap:processing', { matchId });
   }
 
   notifySwapCompleted(matchId: string, txHashA: string, txHashB: string): void {
-    this.server.to(`match:${matchId}`).emit('swap:completed', { matchId, txHashA, txHashB });
+    this.logger.log(`[WS] 📡 Emitindo 'swap:completed' para Match Room: ${matchId}`);
+    const payload = { matchId, txHashA, txHashB };
+    this.logger.debug(`[WS] Payload: ${JSON.stringify(payload, null, 2)}`);
+    this.server.to(`match:${matchId}`).emit('swap:completed', payload);
   }
 
   notifySwapCancelled(userId: string, payload: SwapCancelledPayload): void {
+    this.logger.log(`[WS] 📡 Emitindo 'swap:cancelled' para User: ${userId}`);
+    this.logger.debug(`[WS] Payload: ${JSON.stringify(payload, null, 2)}`);
     this.server.to(`user:${userId}`).emit('swap:cancelled', payload);
   }
 
   notifySwapRefunded(userId: string, matchId: string, txHash: string): void {
-    this.server.to(`user:${userId}`).emit('swap:refunded', { matchId, txHash });
+    this.logger.log(`[WS] 📡 Emitindo 'swap:refunded' para User: ${userId}`);
+    const payload = { matchId, txHash };
+    this.logger.debug(`[WS] Payload: ${JSON.stringify(payload, null, 2)}`);
+    this.server.to(`user:${userId}`).emit('swap:refunded', payload);
   }
 }
