@@ -114,14 +114,30 @@ export class SwapService {
    * Obtém detalhes de um match.
    */
   async getMatchDetails(userId: string, matchId: string): Promise<SwapMatch> {
-    const match = await this.matchRepo.findOne({
+    let match = await this.matchRepo.findOne({
       where: [
         { id: matchId },
-        { orderAId: matchId },
-        { orderBId: matchId },
       ],
       relations: ['orderA', 'orderA.user', 'orderB', 'orderB.user', 'escrowTransactions'],
     });
+
+    if (!match) {
+      match = await this.matchRepo.findOne({
+        where: [
+          { orderAId: matchId },
+        ],
+        relations: ['orderA', 'orderA.user', 'orderB', 'orderB.user', 'escrowTransactions'],
+      });
+    }
+
+    if (!match) {
+      match = await this.matchRepo.findOne({
+        where: [
+          { orderBId: matchId },
+        ],
+        relations: ['orderA', 'orderA.user', 'orderB', 'orderB.user', 'escrowTransactions'],
+      });
+    }
 
     if (!match) throw new NotFoundException('Match não encontrado');
 
