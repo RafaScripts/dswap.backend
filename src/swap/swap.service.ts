@@ -115,7 +115,11 @@ export class SwapService {
    */
   async getMatchDetails(userId: string, matchId: string): Promise<SwapMatch> {
     const match = await this.matchRepo.findOne({
-      where: { id: matchId },
+      where: [
+        { id: matchId },
+        { orderAId: matchId },
+        { orderBId: matchId },
+      ],
       relations: ['orderA', 'orderA.user', 'orderB', 'orderB.user', 'escrowTransactions'],
     });
 
