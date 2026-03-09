@@ -26,6 +26,13 @@ export class MatchingEngineService {
    * - FIFO: primeiro a chegar, primeiro a ser matcheado
    */
   async findMatch(order: SwapOrder): Promise<SwapOrder | null> {
+    this.logger.log(`\n========================================`);
+    this.logger.log(`🔍 [MATCHING ENGINE] Iniciando busca para Order: ${order.id}`);
+    this.logger.log(`   Usuário: ${order.userId}`);
+    this.logger.log(`   Oferece: ${order.offerAmount} ${order.offerTokenSymbol}`);
+    this.logger.log(`   Deseja:  ${order.wantAmount} ${order.wantTokenSymbol}`);
+    this.logger.log(`========================================\n`);
+
     const candidates = await this.orderRepo.find({
       where: {
         chain: order.chain,
@@ -37,17 +44,23 @@ export class MatchingEngineService {
       order: { createdAt: 'ASC' },
     });
 
+    this.logger.log(`[MATCHING ENGINE] Encontrados ${candidates.length} candidatos com pares inversos compatíveis (${order.wantTokenSymbol} -> ${order.offerTokenSymbol})`);
+
     // Filtrar por compatibilidade de quantidades
     for (const candidate of candidates) {
+      this.logger.log(`[MATCHING ENGINE] Avaliando candidato ${candidate.id}...`);
+      
       if (this.isAmountCompatible(order, candidate)) {
-        this.logger.log(
-          `Match encontrado: Order ${order.id} ↔ Order ${candidate.id}`,
-        );
+        this.logger.log(`\n🎉 [MATCHING ENGINE] MATCH PERFEITO ENCONTRADO!`);
+        this.logger.log(`   Order Alice: ${order.id}`);
+        this.logger.log(`   Order Bob:   ${candidate.id}\n`);
         return candidate;
+      } else {
+        this.logger.log(`[MATCHING ENGINE] Candidato ${candidate.id} rejeitado por divergência financeira (fora da margem de 2%).`);
       }
     }
 
-    this.logger.debug(`Nenhum match encontrado para Order ${order.id}`);
+    this.logger.log(`[MATCHING ENGINE] Nenhum match financeiramente compatível encontrado para Order ${order.id}. Ficará aguardando no book.`);
     return null;
   }
 

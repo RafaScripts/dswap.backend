@@ -54,12 +54,21 @@ export class SwapService {
     });
 
     const savedOrder = await this.orderRepo.save(order);
-    this.logger.log(`Ordem criada: ${savedOrder.id} por user ${userId}`);
+    this.logger.log(`\n========================================`);
+    this.logger.log(`📥 [SWAP SERVICE] Nova Ordem (#${savedOrder.id})`);
+    this.logger.log(`   User: ${userId}`);
+    this.logger.log(`   Oferece: ${dto.offerAmount} ${dto.offerTokenSymbol}`);
+    this.logger.log(`   Quer:    ${dto.wantAmount} ${dto.wantTokenSymbol}`);
+    this.logger.log(`   Chain:   ${dto.chain}`);
+    this.logger.log(`========================================\n`);
 
     // Tentar match imediato
     const matchCandidate = await this.matchingEngine.findMatch(savedOrder);
     if (matchCandidate) {
+      this.logger.log(`[SWAP SERVICE] Conectando Ordem ${savedOrder.id} com Ordem ${matchCandidate.id} no banco de dados...`);
       await this.createMatch(savedOrder, matchCandidate);
+    } else {
+      this.logger.log(`[SWAP SERVICE] Ordem ${savedOrder.id} registrada no OrderBook aguardando um par.`);
     }
 
     return savedOrder;
@@ -242,7 +251,14 @@ export class SwapService {
       feeBreakdown,
     });
 
-    this.logger.log(`Match criado: ${savedMatch.id} entre orders ${orderA.id} e ${orderB.id}`);
+    this.logger.log(`\n========================================`);
+    this.logger.log(`🔗 [SWAP SERVICE] MATCH CONSOLIDADO COM SUCESSO!`);
+    this.logger.log(`   ID do Match: ${savedMatch.id}`);
+    this.logger.log(`   Order Alice: ${orderA.id} (User: ${orderA.userId})`);
+    this.logger.log(`   Order Bob:   ${orderB.id} (User: ${orderB.userId})`);
+    this.logger.log(`   Fees Ocultas (JSONB): ${JSON.stringify(feeBreakdown)}`);
+    this.logger.log(`   Notificações Socket.IO foram emitidas para as duas partes!`);
+    this.logger.log(`========================================\n`);
 
     return savedMatch;
   }
