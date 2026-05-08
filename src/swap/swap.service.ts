@@ -85,11 +85,40 @@ export class SwapService {
   }
 
   /**
+   * Obtém detalhes de uma ordem específica do usuário.
+   */
+  async getOrderDetails(userId: string, orderId: string): Promise<SwapOrder> {
+    const order = await this.orderRepo.findOne({
+      where: { id: orderId },
+      relations: ['user'],
+    });
+
+    if (!order) throw new NotFoundException('Ordem não encontrada');
+    if (order.userId !== userId) throw new ForbiddenException('Não autorizado a ver esta ordem');
+
+    return order;
+  }
+
+  /**
    * Lista todas as ordens abertas (para browse).
    */
   async getOpenOrders(): Promise<SwapOrder[]> {
     return this.orderRepo.find({
       where: { status: OrderStatus.OPEN },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  /**
+   * Lista matches do usuário autenticado.
+   */
+  async getUserMatches(userId: string): Promise<SwapMatch[]> {
+    return this.matchRepo.find({
+      where: [
+        { orderA: { userId } },
+        { orderB: { userId } },
+      ],
+      relations: ['orderA', 'orderA.user', 'orderB', 'orderB.user', 'escrowTransactions'],
       order: { createdAt: 'DESC' },
     });
   }

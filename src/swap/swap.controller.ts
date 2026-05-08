@@ -88,6 +88,43 @@ export class SwapController {
   }
 
   /**
+   * Retorna detalhes de uma ordem específica do usuário autenticado.
+   */
+  @Get('orders/:id')
+  @ApiOperation({
+    summary: 'Detalhes de uma ordem do usuário',
+    description:
+      'Retorna os detalhes completos de uma ordem específica do usuário autenticado. ' +
+      'Apenas o dono da ordem pode acessar.',
+  })
+  @ApiParam({ name: 'id', description: 'ID da ordem (UUID)' })
+  @ApiResponse({ status: 200, description: 'Detalhes da ordem', type: SwapOrder })
+  @ApiResponse({ status: 403, description: 'Não autorizado a ver esta ordem' })
+  @ApiResponse({ status: 404, description: 'Ordem não encontrada' })
+  async getOrderDetails(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+  ): Promise<SwapOrder> {
+    return this.swapService.getOrderDetails(user.sub, id);
+  }
+
+  /**
+   * Lista todos os matches do usuário autenticado.
+   */
+  @Get('matches')
+  @ApiOperation({
+    summary: 'Listar matches do usuário',
+    description:
+      'Retorna todos os matches onde o usuário autenticado é participante. ' +
+      'Inclui ordens, contraparte e transações de escrow.',
+  })
+  @ApiResponse({ status: 200, description: 'Lista de matches', type: [SwapMatch] })
+  @ApiResponse({ status: 401, description: 'Não autenticado' })
+  async getUserMatches(@CurrentUser() user: JwtPayload): Promise<SwapMatch[]> {
+    return this.swapService.getUserMatches(user.sub);
+  }
+
+  /**
    * Cancela uma ordem aberta do usuário.
    * Apenas ordens com status OPEN podem ser canceladas.
    */
