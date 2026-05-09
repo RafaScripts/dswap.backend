@@ -8,6 +8,7 @@ RUN pnpm run build
 
 FROM node:22-alpine AS runner
 WORKDIR /app
+RUN apk add --no-cache python3 make g++
 RUN npm install -g pnpm
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --prod --frozen-lockfile
