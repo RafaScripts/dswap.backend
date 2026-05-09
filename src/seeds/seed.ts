@@ -6,6 +6,8 @@ import { SwapMatch } from '../swap/entities/swap-match.entity';
 import { EscrowTransaction } from '../swap/entities/escrow-transaction.entity';
 import { Chain } from '../common/types/chain.enum';
 import { OrderStatus } from '../swap/enums/order-status.enum';
+import { AdminUser } from '../admin-users/entities/admin-user.entity';
+import { hashPassword } from '../common/utils/password';
 
 dotenv.config();
 
@@ -17,7 +19,7 @@ async function seed() {
     username: process.env.DATABASE_USER ?? 'postgres',
     password: process.env.DATABASE_PASSWORD ?? 'postgres',
     database: process.env.DATABASE_NAME ?? 'dswap',
-    entities: [User, SwapOrder, SwapMatch, EscrowTransaction],
+    entities: [User, SwapOrder, SwapMatch, EscrowTransaction, AdminUser],
     synchronize: true, // cria tabelas automaticamente no seed
   });
 
@@ -117,6 +119,26 @@ async function seed() {
     } else {
       console.log(`⏭️  Order já existe: ${data.offerTokenSymbol} → ${data.wantTokenSymbol}`);
     }
+  }
+
+  // user admin
+  const adminRepo = dataSource.getRepository(AdminUser);
+  const hashedPassword = await hashPassword('admin123');
+  const dataAdmin = {
+    name: 'Admin',
+    email: 'rf@rf.c',
+    password: hashedPassword,
+    role: 'admin',
+    isActive: true,
+  };
+
+  let admin = await adminRepo.findOne({ where: { email: dataAdmin.email } });
+  if (!admin) {
+    admin = adminRepo.create(dataAdmin);
+    await adminRepo.save(admin);
+    console.log(`✅ Admin criado: ${admin.email}`);
+  } else {
+    console.log(`⏭️  Admin já existe: ${admin.email}`);
   }
 
   console.log('\n🌱 Seed concluído!');

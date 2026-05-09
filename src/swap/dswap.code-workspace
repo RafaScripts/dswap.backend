@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "../../../dswap"
+		},
+		{
+			"path": "../.."
+		},
+		{
+			"path": "../../../dswap.admin"
+		}
+	],
+	"settings": {}
+}

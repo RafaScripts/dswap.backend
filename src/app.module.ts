@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CacheModule } from '@nestjs/cache-manager';
@@ -18,6 +18,7 @@ import { User } from './auth/entities/user.entity';
 import { SwapOrder } from './swap/entities/swap-order.entity';
 import { SwapMatch } from './swap/entities/swap-match.entity';
 import { EscrowTransaction } from './swap/entities/escrow-transaction.entity';
+import { AdminUser } from './admin-users/entities/admin-user.entity';
 
 // Feature modules
 import { AuthModule } from './auth/auth.module';
@@ -25,11 +26,16 @@ import { MarketModule } from './market/market.module';
 import { PortfolioModule } from './portfolio/portfolio.module';
 import { SwapModule } from './swap/swap.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { AdminAuthModule } from './admin-auth/admin-auth.module';
+import { AdminReportsModule } from './admin-reports/admin-reports.module';
 
 // Common
 import { WalletAuthGuard } from './common/guards/wallet-auth.guard';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { AdminUsersModule } from './admin-users/admin-users.module';
+import { MetricsModule } from './common/metrics/metrics.module';
+import { RequestMetricsMiddleware } from './common/metrics/request-metrics.middleware';
 
 @Module({
   imports: [
@@ -49,7 +55,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
         username: config.get<string>('DATABASE_USER', 'postgres'),
         password: config.get<string>('DATABASE_PASSWORD', 'postgres'),
         database: config.get<string>('DATABASE_NAME', 'dswap'),
-        entities: [User, SwapOrder, SwapMatch, EscrowTransaction],
+        entities: [User, SwapOrder, SwapMatch, EscrowTransaction, AdminUser],
         synchronize: config.get<string>('NODE_ENV') === 'development',
         migrations: ['dist/migrations/*.js'],
         logging: config.get<string>('NODE_ENV') === 'development',
@@ -88,6 +94,10 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
     PortfolioModule,
     SwapModule,
     NotificationsModule,
+    AdminUsersModule,
+    AdminAuthModule,
+    AdminReportsModule,
+    MetricsModule,
   ],
   providers: [
     // Guard global de autenticação (respects @Public())
@@ -98,6 +108,11 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
     { provide: APP_INTERCEPTOR, useClass: TransformInterceptor },
     // Filtro global de exceções
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
+    RequestMetricsMiddleware,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(RequestMetricsMiddleware).forRoutes('*');
+  }
+}
