@@ -9,6 +9,6 @@ import { AdminAuthGuard } from '../common/guards';
   imports: [TypeOrmModule.forFeature([AdminUser])],
   controllers: [AdminAuthController],
   providers: [AdminAuthService, AdminAuthGuard],
-  exports: [AdminAuthGuard],
+  exports: [AdminAuthGuard, TypeOrmModule],
 })
 export class AdminAuthModule {}
