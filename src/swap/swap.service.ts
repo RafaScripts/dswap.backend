@@ -231,16 +231,18 @@ export class SwapService {
       throw new BadRequestException('Match não está no status correto para confirmação');
     }
 
+    let triggerMockConfirm = false;
+
     // Determinar qual lado está confirmando
     if (match.orderA.userId === userId) {
       match.userAConfirmed = true;
       if (process.env.NODE_ENV === 'development' && match.orderB.userId === MOCK_PEER_UUID) {
-        match.userBConfirmed = true;
+        triggerMockConfirm = true;
       }
     } else if (match.orderB.userId === userId) {
       match.userBConfirmed = true;
       if (process.env.NODE_ENV === 'development' && match.orderA.userId === MOCK_PEER_UUID) {
-        match.userAConfirmed = true;
+        triggerMockConfirm = true;
       }
     } else {
       throw new ForbiddenException('Não autorizado a confirmar este match');
@@ -283,7 +285,18 @@ export class SwapService {
       }
     }
 
-    return this.matchRepo.save(match);
+    const savedMatch = await this.matchRepo.save(match);
+
+    if (triggerMockConfirm) {
+      this.logger.log(`[MOCK] Usuário confirmou. Simulando a confirmação do MOCK peer em 5 segundos...`);
+      setTimeout(() => {
+        this.confirmMatch(MOCK_PEER_UUID, match.id).catch(err => 
+          this.logger.error(`Erro ao auto-confirmar mock: ${err.message}`)
+        );
+      }, 5000);
+    }
+
+    return savedMatch;
   }
 
   /**

@@ -14,7 +14,7 @@ import { Public } from '../common/decorators/public.decorator';
 @ApiTags('Market')
 @Controller('market')
 export class MarketController {
-  constructor(private readonly marketService: MarketService) {}
+  constructor(private readonly marketService: MarketService) { }
 
   /**
    * Retorna cotações atuais de criptomoedas.

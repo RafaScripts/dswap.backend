@@ -13,7 +13,7 @@ export class PortfolioService {
     private readonly evmProvider: EvmBalanceProvider,
     private readonly solanaProvider: SolanaBalanceProvider,
     private readonly marketService: MarketService,
-  ) {}
+  ) { }
 
   /**
    * Agrega balances de um endereço em uma chain específica.
@@ -77,6 +77,14 @@ export class PortfolioService {
         decimals: 8,
         valueUsd: 0.15 * 60000
       });
+      tokens.push({
+        token: 'MOCK_USDT',
+        symbol: 'USDT',
+        name: 'Tether',
+        balance: '5000',
+        decimals: 6,
+        valueUsd: 5000
+      })
     }
 
     const finalTotalUsd = tokens.reduce((sum, token) => sum + (token.valueUsd ?? 0), 0);

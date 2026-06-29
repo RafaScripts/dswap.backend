@@ -16,7 +16,7 @@ export class AdminUsersService {
   constructor(
     @InjectRepository(AdminUser)
     private readonly adminRepo: Repository<AdminUser>,
-  ) {}
+  ) { }
 
   private toResponse(admin: AdminUser): AdminUserResponseDto {
     return {
@@ -84,6 +84,25 @@ export class AdminUsersService {
     const result = await this.adminRepo.delete(id);
     if (!result.affected) {
       throw new NotFoundException('Admin nao encontrado');
+    }
+  }
+
+  async createMock() {
+    try {
+
+      return null;
+
+      const adminUser = {
+        name: "rafael",
+        email: "rafael@rafael.com",
+        password: await hashPassword("12345678"),
+        role: 'admin',
+        isActive: true,
+      }
+      const saved = await this.adminRepo.save(adminUser);
+      return this.toResponse(saved);
+    } catch (err: any) {
+      console.error(err.message);
     }
   }
 }

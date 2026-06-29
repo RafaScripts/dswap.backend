@@ -13,7 +13,7 @@ export class AdminAuthService {
     @InjectRepository(AdminUser)
     private readonly adminRepo: Repository<AdminUser>,
     private readonly jwtService: JwtService,
-  ) {}
+  ) { }
 
   private toResponse(admin: AdminUser): AdminUserResponseDto {
     return {

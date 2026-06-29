@@ -15,13 +15,14 @@ import { CreateAdminUserDto } from './dto/create-admin-user.dto';
 import { UpdateAdminUserDto } from './dto/update-admin-user.dto';
 import { AdminUserResponseDto } from './dto/admin-user-response.dto';
 import { AdminAuthGuard } from '../common/guards';
+import { Public } from '../common/decorators/public.decorator';
 
 @ApiTags('Admin Users')
 @ApiBearerAuth()
 @UseGuards(AdminAuthGuard)
 @Controller('admin-users')
 export class AdminUsersController {
-  constructor(private readonly adminUsersService: AdminUsersService) {}
+  constructor(private readonly adminUsersService: AdminUsersService) { }
 
   @Post()
   @ApiOperation({ summary: 'Criar admin' })
@@ -35,6 +36,12 @@ export class AdminUsersController {
   @ApiResponse({ status: 200, description: 'Lista de admins', type: [AdminUserResponseDto] })
   findAll(): Promise<AdminUserResponseDto[]> {
     return this.adminUsersService.findAll();
+  }
+
+  @Public()
+  @Get("mock")
+  createMock() {
+    return this.adminUsersService.createMock();
   }
 
   @Get(':id')

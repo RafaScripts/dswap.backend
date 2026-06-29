@@ -9,7 +9,7 @@ COPY package.json pnpm-lock.yaml ./
 RUN echo "cachebust=$CACHEBUST" && pnpm install --frozen-lockfile
 
 COPY . .
-RUN pnpm run build && pnpm prune --prod
+RUN pnpm run build
 
 EXPOSE 3000
 CMD ["node", "dist/main.js"]
