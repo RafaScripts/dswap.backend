@@ -16,6 +16,9 @@ import { FeeCalculatorService } from './fee-calculator.service';
 import { EscrowService } from './escrow.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { SwapGateway } from './swap.gateway';
+import { User } from '../auth/entities/user.entity';
+
+export const MOCK_PEER_UUID = '00000000-0000-0000-0000-000000000000';
 
 @Injectable()
 export class SwapService {
@@ -26,6 +29,8 @@ export class SwapService {
     private readonly orderRepo: Repository<SwapOrder>,
     @InjectRepository(SwapMatch)
     private readonly matchRepo: Repository<SwapMatch>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
     private readonly matchingEngine: MatchingEngineService,
     private readonly feeCalculator: FeeCalculatorService,
     private readonly escrowService: EscrowService,
@@ -67,6 +72,40 @@ export class SwapService {
     if (matchCandidate) {
       this.logger.log(`[SWAP SERVICE] Conectando Ordem ${savedOrder.id} com Ordem ${matchCandidate.id} no banco de dados...`);
       await this.createMatch(savedOrder, matchCandidate);
+    } else if (process.env.NODE_ENV === 'development') {
+      this.logger.log(`[MOCK] Ordem ${savedOrder.id} registrada. Criando MOCK peer em 3 segundos...`);
+      setTimeout(async () => {
+        try {
+          // Garantir que o mock user existe
+          let mockUser = await this.userRepo.findOne({ where: { id: MOCK_PEER_UUID } });
+          if (!mockUser) {
+            mockUser = this.userRepo.create({
+              id: MOCK_PEER_UUID,
+              address: '0xMOCK000000000000000000000000000000000000',
+              primaryChain: dto.chain,
+            });
+            await this.userRepo.save(mockUser);
+          }
+
+          const mockOrder = this.orderRepo.create({
+            userId: MOCK_PEER_UUID,
+            chain: dto.chain,
+            offerToken: dto.wantToken,
+            offerTokenSymbol: dto.wantTokenSymbol,
+            offerAmount: dto.wantAmount,
+            wantToken: dto.offerToken,
+            wantTokenSymbol: dto.offerTokenSymbol,
+            wantAmount: dto.offerAmount,
+            status: OrderStatus.OPEN,
+            expiresAt,
+          });
+          const savedMockOrder = await this.orderRepo.save(mockOrder);
+          this.logger.log(`[MOCK] MOCK peer criado com Ordem ${savedMockOrder.id}. Fazendo match...`);
+          await this.createMatch(savedOrder, savedMockOrder);
+        } catch (e) {
+          this.logger.error(`Erro no mock match: ${e}`);
+        }
+      }, 3000);
     } else {
       this.logger.log(`[SWAP SERVICE] Ordem ${savedOrder.id} registrada no OrderBook aguardando um par.`);
     }
@@ -195,8 +234,14 @@ export class SwapService {
     // Determinar qual lado está confirmando
     if (match.orderA.userId === userId) {
       match.userAConfirmed = true;
+      if (process.env.NODE_ENV === 'development' && match.orderB.userId === MOCK_PEER_UUID) {
+        match.userBConfirmed = true;
+      }
     } else if (match.orderB.userId === userId) {
       match.userBConfirmed = true;
+      if (process.env.NODE_ENV === 'development' && match.orderA.userId === MOCK_PEER_UUID) {
+        match.userAConfirmed = true;
+      }
     } else {
       throw new ForbiddenException('Não autorizado a confirmar este match');
     }
@@ -216,6 +261,26 @@ export class SwapService {
       await this.escrowService.createEscrowTransactions(match);
 
       this.logger.log(`Match ${matchId} confirmado por ambos, escrow criado`);
+
+      // MOCK: Simular todo o fluxo de escrow
+      if (process.env.NODE_ENV === 'development') {
+        setTimeout(async () => {
+          this.logger.log(`[MOCK] Simulando depósito recebido...`);
+          await this.escrowService.simulateMockDeposits(match.id);
+          
+          this.swapGateway.notifyDepositReceived(match.orderA.userId, { matchId: match.id, side: 'A', txHash: '0xmock', confirmations: 1 });
+          this.swapGateway.notifyDepositReceived(match.orderB.userId, { matchId: match.id, side: 'B', txHash: '0xmock', confirmations: 1 });
+
+          setTimeout(() => {
+            this.swapGateway.notifySwapProcessing(match.id);
+
+            setTimeout(() => {
+              this.swapGateway.notifySwapCompleted(match.id, '0xmocka', '0xmockb');
+            }, 3000);
+          }, 3000);
+
+        }, 3000);
+      }
     }
 
     return this.matchRepo.save(match);
@@ -247,9 +312,18 @@ export class SwapService {
       await this.matchRepo.save(match);
     }
 
-    // Reabrir as ordens
-    await this.orderRepo.update(match.orderAId, { status: OrderStatus.OPEN });
-    await this.orderRepo.update(match.orderBId, { status: OrderStatus.OPEN });
+    // Reabrir as ordens ou deletar se for MOCK
+    if (match.orderA.userId === MOCK_PEER_UUID) {
+      await this.orderRepo.delete(match.orderAId);
+    } else {
+      await this.orderRepo.update(match.orderAId, { status: OrderStatus.OPEN });
+    }
+
+    if (match.orderB.userId === MOCK_PEER_UUID) {
+      await this.orderRepo.delete(match.orderBId);
+    } else {
+      await this.orderRepo.update(match.orderBId, { status: OrderStatus.OPEN });
+    }
 
     // Notificar via WebSocket
     const otherUserId = match.orderA.userId === userId ? match.orderB.userId : match.orderA.userId;

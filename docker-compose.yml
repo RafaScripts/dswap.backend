@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
     platform: linux/arm64
     ports:
-      - '3000:3000'
+      - '4000:3000'
     environment:
       - NODE_ENV=development
     env_file:
@@ -37,6 +37,19 @@ services:
     volumes:
       - redisdata:/data
 
+  dbgate:
+    image: dbgate/dbgate:latest
+    container_name: dbgate
+    restart: unless-stopped
+    environment:
+      - LOGIN=dswap
+      - PASSWORD=dswap
+    volumes:
+      - ./dbgate_data:/root/.dbgate
+    ports:
+      - "3030:3000"
+
 volumes:
+  dbgatedata:
   pgdata:
   redisdata:

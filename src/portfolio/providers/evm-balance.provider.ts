@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Chain } from '../../common/types/chain.enum';
 import { TokenBalanceDto } from '../dto/portfolio-response.dto';
 import { createPublicClient, http, erc20Abi, formatUnits, type PublicClient } from 'viem';
-import { mainnet, polygon, arbitrum, bsc } from 'viem/chains';
+import { mainnet, polygon, arbitrum, bsc, gnosis, polygonAmoy, sepolia, gnosisChiado } from 'viem/chains';
 
 /**
  * Lista mínima de tokens ERC-20 populares para consulta.
@@ -28,6 +28,10 @@ const KNOWN_TOKENS: Record<string, Array<{ address: `0x${string}`; symbol: strin
     { address: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', symbol: 'USDC', name: 'USD Coin', decimals: 18 },
     { address: '0x55d398326f99059fF775485246999027B3197955', symbol: 'USDT', name: 'Tether USD', decimals: 18 },
   ],
+  [Chain.GNOSIS]: [],
+  [Chain.POLYGON_AMOY]: [],
+  [Chain.SEPOLIA]: [],
+  [Chain.GNOSIS_CHIADO]: [],
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -36,6 +40,10 @@ const CHAIN_MAP: Record<string, any> = {
   [Chain.POLYGON]: polygon,
   [Chain.ARBITRUM]: arbitrum,
   [Chain.BSC]: bsc,
+  [Chain.GNOSIS]: gnosis,
+  [Chain.POLYGON_AMOY]: polygonAmoy,
+  [Chain.SEPOLIA]: sepolia,
+  [Chain.GNOSIS_CHIADO]: gnosisChiado,
 };
 
 const NATIVE_SYMBOLS: Record<string, { symbol: string; name: string; decimals: number }> = {
@@ -43,6 +51,10 @@ const NATIVE_SYMBOLS: Record<string, { symbol: string; name: string; decimals: n
   [Chain.POLYGON]: { symbol: 'POL', name: 'Polygon', decimals: 18 },
   [Chain.ARBITRUM]: { symbol: 'ETH', name: 'Ethereum', decimals: 18 },
   [Chain.BSC]: { symbol: 'BNB', name: 'BNB', decimals: 18 },
+  [Chain.GNOSIS]: { symbol: 'xDAI', name: 'xDAI', decimals: 18 },
+  [Chain.POLYGON_AMOY]: { symbol: 'POL', name: 'Polygon', decimals: 18 },
+  [Chain.SEPOLIA]: { symbol: 'ETH', name: 'Ethereum Sepolia', decimals: 18 },
+  [Chain.GNOSIS_CHIADO]: { symbol: 'xDAI', name: 'xDAI Chiado', decimals: 18 },
 };
 
 @Injectable()
@@ -119,7 +131,23 @@ export class EvmBalanceProvider {
       [Chain.POLYGON]: 'POLYGON_RPC_URL',
       [Chain.ARBITRUM]: 'ARBITRUM_RPC_URL',
       [Chain.BSC]: 'BSC_RPC_URL',
+      [Chain.GNOSIS]: 'GNOSIS_RPC_URL',
+      [Chain.POLYGON_AMOY]: 'POLYGON_AMOY_RPC_URL',
+      [Chain.SEPOLIA]: 'SEPOLIA_RPC_URL',
+      [Chain.GNOSIS_CHIADO]: 'GNOSIS_CHIADO_RPC_URL',
     };
-    return this.config.get<string>(envMap[chain] ?? '', 'https://eth-mainnet.g.alchemy.com/v2/demo');
+    
+    const fallbackUrls: Record<string, string> = {
+      [Chain.ETHEREUM]: 'https://eth.llamarpc.com',
+      [Chain.POLYGON]: 'https://polygon.llamarpc.com',
+      [Chain.ARBITRUM]: 'https://arbitrum.llamarpc.com',
+      [Chain.BSC]: 'https://binance.llamarpc.com',
+      [Chain.GNOSIS]: 'https://rpc.gnosischain.com',
+      [Chain.POLYGON_AMOY]: 'https://rpc-amoy.polygon.technology',
+      [Chain.SEPOLIA]: 'https://rpc.sepolia.org',
+      [Chain.GNOSIS_CHIADO]: 'https://rpc.chiadochain.net',
+    };
+
+    return this.config.get<string>(envMap[chain] ?? '', fallbackUrls[chain] ?? fallbackUrls[Chain.POLYGON]);
   }
 }

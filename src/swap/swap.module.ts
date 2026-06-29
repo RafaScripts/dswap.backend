@@ -9,11 +9,12 @@ import { SwapGateway } from './swap.gateway';
 import { SwapOrder } from './entities/swap-order.entity';
 import { SwapMatch } from './entities/swap-match.entity';
 import { EscrowTransaction } from './entities/escrow-transaction.entity';
+import { User } from '../auth/entities/user.entity';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([SwapOrder, SwapMatch, EscrowTransaction]),
+    TypeOrmModule.forFeature([SwapOrder, SwapMatch, EscrowTransaction, User]),
     forwardRef(() => AuthModule),
   ],
   controllers: [SwapController],

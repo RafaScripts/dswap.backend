@@ -1,0 +1,6 @@
+allowBuilds:
+  '@nestjs/core': true
+  '@scarf/scarf': true
+  bufferutil: true
+  msgpackr-extract: true
+  utf-8-validate: true

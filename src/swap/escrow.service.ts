@@ -104,6 +104,34 @@ export class EscrowService {
   }
 
   /**
+   * MOCK: Simula depósitos e distribuições para testar localmente sem counterparty real e sem blockchain.
+   */
+  async simulateMockDeposits(matchId: string): Promise<void> {
+    const inboundTxs = await this.escrowRepo.find({
+      where: {
+        matchId,
+        direction: TransactionDirection.INBOUND,
+        status: EscrowStatus.AWAITING_DEPOSIT,
+      },
+    });
+
+    for (const tx of inboundTxs) {
+      await this.confirmDeposit(tx.id, '0xmock_deposit_' + Date.now(), 123456, 10);
+    }
+
+    const bothConfirmed = await this.areBothDepositsConfirmed(matchId);
+    if (bothConfirmed) {
+      const match = await this.matchRepo.findOne({
+        where: { id: matchId },
+        relations: ['orderA', 'orderA.user', 'orderB', 'orderB.user'],
+      });
+      if (match) {
+        await this.distribute(match);
+      }
+    }
+  }
+
+  /**
    * Distribui tokens após ambos terem depositado.
    * Cria transações OUTBOUND e atualiza status do match para COMPLETED.
    */
@@ -255,9 +283,9 @@ export class EscrowService {
     const rpcUrl = this.config.get<string>(rpcEnvMap[chain] ?? '');
     const privateKey = this.config.get<string>(privateKeyEnvMap[chain] ?? '');
 
-    if (!rpcUrl || !privateKey) {
-      this.logger.warn(`[ESCROW] RPC_URL ou PRIVATE_KEY ausentes para ${chain}. Simulando sucesso de Tx.`);
-      return { txHash: '0xmockhash', gasUsed: '21000' };
+    if (process.env.NODE_ENV === 'development' || !rpcUrl || !privateKey) {
+      this.logger.warn(`[ESCROW] DEV Mode ou RPC/PK ausentes para ${chain}. Simulando sucesso de Tx (Mock).`);
+      return { txHash: '0xmockhash_' + Date.now(), gasUsed: '21000' };
     }
 
     const publicClient = createPublicClient({ transport: http(rpcUrl) });
