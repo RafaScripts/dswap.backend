@@ -23,42 +23,67 @@ export class SolanaBalanceProvider {
     const balances: TokenBalanceDto[] = [];
 
     try {
-      // 1. SOL nativo
-      const solBalance = await connection.getBalance(publicKey);
-      if (solBalance > 0) {
-        balances.push({
-          token: 'NATIVE',
-          symbol: 'SOL',
-          name: 'Solana',
-          balance: (solBalance / 1e9).toString(),
-          decimals: 9,
-        });
-      }
-
-      // 2. SPL tokens
-      const tokenAccounts = await connection.getParsedTokenAccountsByOwner(publicKey, {
-        programId: TOKEN_PROGRAM_ID,
-      });
-
-      for (const account of tokenAccounts.value) {
-        const parsed = account.account.data.parsed;
-        const info = parsed.info;
-        const amount = info.tokenAmount;
-
-        if (Number(amount.uiAmount) > 0) {
-          balances.push({
-            token: info.mint,
-            symbol: '', // Será preenchido pelo portfolio service com dados de mercado
-            name: '',
-            balance: amount.uiAmountString,
-            decimals: amount.decimals,
-          });
-        }
-      }
+      balances.push(...await this.fetchBalancesFromConnection(connection, publicKey));
     } catch (error) {
-      this.logger.error(`Erro ao obter balances Solana para ${address}`, error);
+      this.logger.warn(`Erro na RPC principal Solana para ${address}. Tentando fallback...`);
+      
+      const tatumApiKey = this.config.get<string>('TATUM_API_KEY');
+      if (tatumApiKey) {
+        try {
+          const fallbackConnection = new Connection('https://solana-mainnet.gateway.tatum.io', {
+            httpHeaders: {
+              'x-api-key': tatumApiKey,
+            }
+          });
+          balances.push(...await this.fetchBalancesFromConnection(fallbackConnection, publicKey));
+        } catch (fallbackError) {
+          this.logger.error(`Erro no fallback Solana para ${address}`, fallbackError);
+        }
+      } else {
+        this.logger.error(`Sem TATUM_API_KEY para fallback Solana. Erro original:`, error);
+      }
     }
 
     return balances;
   }
+
+  private async fetchBalancesFromConnection(connection: Connection, publicKey: PublicKey): Promise<TokenBalanceDto[]> {
+    const balances: TokenBalanceDto[] = [];
+
+    // 1. SOL nativo
+    const solBalance = await connection.getBalance(publicKey);
+    if (solBalance > 0) {
+      balances.push({
+        token: 'NATIVE',
+        symbol: 'SOL',
+        name: 'Solana',
+        balance: (solBalance / 1e9).toString(),
+        decimals: 9,
+      });
+    }
+
+    // 2. SPL tokens
+    const tokenAccounts = await connection.getParsedTokenAccountsByOwner(publicKey, {
+      programId: TOKEN_PROGRAM_ID,
+    });
+
+    for (const account of tokenAccounts.value) {
+      const parsed = account.account.data.parsed;
+      const info = parsed.info;
+      const amount = info.tokenAmount;
+
+      if (Number(amount.uiAmount) > 0) {
+        balances.push({
+          token: info.mint,
+          symbol: '', // Será preenchido pelo portfolio service com dados de mercado
+          name: '',
+          balance: amount.uiAmountString,
+          decimals: amount.decimals,
+        });
+      }
+    }
+
+    return balances;
+  }
+
 }

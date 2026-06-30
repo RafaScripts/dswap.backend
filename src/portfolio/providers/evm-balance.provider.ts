@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Chain } from '../../common/types/chain.enum';
 import { TokenBalanceDto } from '../dto/portfolio-response.dto';
-import { createPublicClient, http, erc20Abi, formatUnits, type PublicClient } from 'viem';
+import { createPublicClient, http, fallback, erc20Abi, formatUnits, type PublicClient } from 'viem';
 import { mainnet, polygon, arbitrum, bsc, gnosis, polygonAmoy, sepolia, gnosisChiado } from 'viem/chains';
 
 /**
@@ -69,12 +69,27 @@ export class EvmBalanceProvider {
    */
   async getBalances(address: string, chain: Chain): Promise<TokenBalanceDto[]> {
     const rpcUrl = this.getRpcUrl(chain);
+    const tatumFallbackUrl = this.getTatumFallbackUrl(chain);
+    const tatumApiKey = this.config.get<string>('TATUM_API_KEY');
     const viemChain = CHAIN_MAP[chain];
     if (!viemChain) return [];
 
+    const transports = [http(rpcUrl)];
+    if (tatumFallbackUrl && tatumApiKey) {
+      transports.push(
+        http(tatumFallbackUrl, {
+          fetchOptions: {
+            headers: {
+              'x-api-key': tatumApiKey,
+            },
+          },
+        })
+      );
+    }
+
     const client = createPublicClient({
       chain: viemChain,
-      transport: http(rpcUrl),
+      transport: fallback(transports),
     });
 
     const balances: TokenBalanceDto[] = [];
@@ -96,7 +111,7 @@ export class EvmBalanceProvider {
       // 2. ERC-20 balances via multicall
       const tokens = KNOWN_TOKENS[chain] ?? [];
       if (tokens.length > 0) {
-        const results = await (client as PublicClient).multicall({
+        const results = await (client as unknown as PublicClient).multicall({
           contracts: tokens.map((token) => ({
             address: token.address,
             abi: erc20Abi,
@@ -149,5 +164,16 @@ export class EvmBalanceProvider {
     };
 
     return this.config.get<string>(envMap[chain] ?? '', fallbackUrls[chain] ?? fallbackUrls[Chain.POLYGON]);
+  }
+
+  private getTatumFallbackUrl(chain: Chain): string | null {
+    const tatumUrls: Record<string, string> = {
+      [Chain.ETHEREUM]: 'https://ethereum-mainnet.gateway.tatum.io',
+      [Chain.POLYGON]: 'https://polygon-mainnet.gateway.tatum.io',
+      [Chain.ARBITRUM]: 'https://arbitrum-one-mainnet.gateway.tatum.io',
+      [Chain.BSC]: 'https://bsc-mainnet.gateway.tatum.io',
+      [Chain.GNOSIS]: 'https://gnosis-mainnet.gateway.tatum.io',
+    };
+    return tatumUrls[chain] ?? null;
   }
 }
